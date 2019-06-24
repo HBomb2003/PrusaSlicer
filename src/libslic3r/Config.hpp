@@ -326,6 +326,8 @@ public:
     }
 };
 
+inline SLIC3R_CONSTEXPR coord_t scale_(const ConfigOptionFloat& cf) SLIC3R_NOEXCEPT { return scale_(cf.value); }
+
 class ConfigOptionFloats : public ConfigOptionVector<double>
 {
 public:

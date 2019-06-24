@@ -17,6 +17,7 @@
 #include <vector>
 #include <cassert>
 #include <cmath>
+#include <limits>
 
 #include "Technologies.hpp"
 
@@ -47,7 +48,7 @@ typedef double  coordf_t;
 #define EXTERNAL_INFILL_MARGIN 3.
 //FIXME Better to use an inline function with an explicit return type.
 //inline coord_t scale_(coordf_t v) { return coord_t(floor(v / SCALING_FACTOR + 0.5f)); }
-#define scale_(val) ((val) / SCALING_FACTOR)
+//#define scale_(val) ((val) / SCALING_FACTOR)
 
 #define SCALED_EPSILON scale_(EPSILON)
 
@@ -60,20 +61,6 @@ typedef double  coordf_t;
 #define SLIC3R_CONSTEXPR constexpr
 #define SLIC3R_NOEXCEPT  noexcept
 #endif
-
-template<class Tf> inline SLIC3R_CONSTEXPR coord_t scaled(Tf val)
-{
-    static_assert (std::is_floating_point<Tf>::value, "Floating point only");
-    return coord_t(val / Tf(SCALING_FACTOR));
-}
-
-template<class Tf = double> inline SLIC3R_CONSTEXPR Tf unscaled(coord_t val)
-{
-    static_assert (std::is_floating_point<Tf>::value, "Floating point only");
-    return Tf(val * Tf(SCALING_FACTOR));
-}
-
-inline SLIC3R_CONSTEXPR float unscaledf(coord_t val) { return unscaled<float>(val); }
 
 inline std::string debug_out_path(const char *name, ...)
 {
@@ -106,8 +93,50 @@ inline std::string debug_out_path(const char *name, ...)
 
 namespace Slic3r {
 
-template<typename T, typename Q>
-inline T unscale(Q v) { return T(v) * T(SCALING_FACTOR); }
+// C++11 shorthand for typename std::enable_if<T>::type (like in C++14)
+template<bool B, class T>
+using enable_if_t = typename std::enable_if<B, T>::type;
+
+template<class T>
+using remove_ref_t = typename std::remove_reference<T>::type;
+
+// Meta function for removing const, volatile and referece/pointer qualifiers
+template<class T> struct remove_cvref
+{
+    using type = typename std::remove_cv<remove_ref_t<T>>::type;
+};
+
+// Remove const, volatile and reference qualifiers from a type
+template<class T> using rmcvr_t = typename remove_cvref<T>::type;
+
+// I will use enable_if and SFINAE for the following functions, instead of
+// static_assert to enable tooling (intellisence, code-model) to signal
+// errors before compilation. Also, static_assert would prevent overload
+// resolution to fall back to another function that is feasible to compile.
+
+template<class I = coord_t, class Tf = double>
+inline SLIC3R_CONSTEXPR enable_if_t<
+    std::is_arithmetic<rmcvr_t<Tf>>::value && std::is_arithmetic<I>::value,
+    I>
+scale_(Tf val) SLIC3R_NOEXCEPT // SCALING_FACTOR should never be 0
+{
+    // Make sure that the return type can hold at least as much precision
+    // as the reference coord_t
+    static_assert(std::numeric_limits<I>::digits >=
+                      std::numeric_limits<coord_t>::digits,
+                  "");
+    
+    return I(val / SCALING_FACTOR); // can be narrowing conversion
+}
+
+template<class Tf = double, class I = coord_t>
+inline SLIC3R_CONSTEXPR enable_if_t<
+    std::is_floating_point<Tf>::value && std::is_arithmetic<rmcvr_t<I>>::value,
+    Tf>
+unscale(I val) SLIC3R_NOEXCEPT
+{
+    return Tf(val * Tf(SCALING_FACTOR)); // can be narrowing as well
+}
 
 enum Axis { X=0, Y, Z, E, F, NUM_AXES };
 

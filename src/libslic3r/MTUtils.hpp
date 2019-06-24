@@ -7,6 +7,8 @@
 #include <utility>    // for std::forward
 #include <algorithm>
 
+#include "libslic3r.h"
+
 namespace Slic3r {
 
 /// Handy little spin mutex for the cached meshes.
@@ -239,13 +241,14 @@ template<class C> bool all_of(const C &container)
                        });
 }
 
-template<class X, class Y> inline X ceil_i(X x, Y y)
+template<class X, class Y>
+inline enable_if_t<std::is_integral<rmcvr_t<X>>::value &&
+                       std::is_integral<rmcvr_t<Y>>::value &&
+                       sizeof(rmcvr_t<X>) >= sizeof(rmcvr_t<Y>),
+                   rmcvr_t<X>>
+ceil_i(X x, Y y)
 {
-    static_assert(std::is_integral<X>::value &&
-                      std::is_integral<Y>::value && sizeof(X) >= sizeof(Y),
-                  "");
-
-    return (x % y) ? x / y + 1 : x / y;
+    return rmcvr_t<X>{(x % y) ? x / y + 1 : x / y};
 }
 
 } // namespace Slic3r
