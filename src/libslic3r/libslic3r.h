@@ -47,7 +47,7 @@ typedef double  coordf_t;
 #define EXTERNAL_INFILL_MARGIN 3.
 //FIXME Better to use an inline function with an explicit return type.
 //inline coord_t scale_(coordf_t v) { return coord_t(floor(v / SCALING_FACTOR + 0.5f)); }
-#define scale_(val) ((val) / SCALING_FACTOR)
+//#define scale_(val) ((val) / SCALING_FACTOR)
 
 #define SCALED_EPSILON scale_(EPSILON)
 
@@ -60,20 +60,6 @@ typedef double  coordf_t;
 #define SLIC3R_CONSTEXPR constexpr
 #define SLIC3R_NOEXCEPT  noexcept
 #endif
-
-template<class Tf> inline SLIC3R_CONSTEXPR coord_t scaled(Tf val)
-{
-    static_assert (std::is_floating_point<Tf>::value, "Floating point only");
-    return coord_t(val / Tf(SCALING_FACTOR));
-}
-
-template<class Tf = double> inline SLIC3R_CONSTEXPR Tf unscaled(coord_t val)
-{
-    static_assert (std::is_floating_point<Tf>::value, "Floating point only");
-    return Tf(val * Tf(SCALING_FACTOR));
-}
-
-inline SLIC3R_CONSTEXPR float unscaledf(coord_t val) { return unscaled<float>(val); }
 
 inline std::string debug_out_path(const char *name, ...)
 {
@@ -106,8 +92,47 @@ inline std::string debug_out_path(const char *name, ...)
 
 namespace Slic3r {
 
-template<typename T, typename Q>
-inline T unscale(Q v) { return T(v) * T(SCALING_FACTOR); }
+template<bool B, class T>
+using enable_if_t = typename std::enable_if<B, T>::type;
+
+// Using enable_if and SFINAE for the following functions, instead of
+// static_assert to enable tools (intellisence, code-model) to signal
+// errors before compilation. Also, static_assert would prevent overload
+// resolution to fall back to another function that is feasible to compile.
+
+// scale_ and unscale functions here are designed for arithmetic types but can
+// be safely redefined for other types such as Point, Eigen vectors, etc...
+
+// Upscaling a value for integer arithmetics. Can be used with floating
+// point return types as well for intermediate results.
+template<class I = coord_t, class Tf = double> inline SLIC3R_CONSTEXPR
+enable_if_t<std::is_arithmetic<Tf>::value && std::is_arithmetic<I>::value, I>
+    scale_(Tf val) SLIC3R_NOEXCEPT
+{
+    // Make sure that the return type can hold at least as much precision
+    // as the reference coord_t
+    static_assert(std::numeric_limits<I>::digits >=
+                  std::numeric_limits<coord_t>::digits,
+                  "");
+
+    return I(val / SCALING_FACTOR); // can be narrowing conversion
+}
+
+// Unscale for any integer or floating point which returns the unscaled
+// value in a (strictly) floating point type.
+template<class Tf = double, class I = coord_t> inline SLIC3R_CONSTEXPR
+enable_if_t<std::is_floating_point<Tf>::value && std::is_arithmetic<I>::value, Tf>
+    unscale(I val) SLIC3R_NOEXCEPT
+{
+    return Tf(val * Tf(SCALING_FACTOR)); // can be narrowing as well
+}
+
+// Shorthand for unscaling to float
+template<class I = coord_t>
+inline SLIC3R_CONSTEXPR float unscalef(I val) SLIC3R_NOEXCEPT
+{
+    return unscale<float, I>(val);
+}
 
 enum Axis { X=0, Y, Z, E, F, NUM_AXES };
 

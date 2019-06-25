@@ -610,7 +610,7 @@ ShapeData2D projectModelFromTop(const Slic3r::Model &model,
                 
                 if(tolerance > EPSILON) {
                     Polygons pp { p };
-                    pp = p.simplify(double(scaled(tolerance)));
+                    pp = p.simplify(scale_<double>(tolerance));
                     if (!pp.empty()) p = pp.front();
                 }
                 

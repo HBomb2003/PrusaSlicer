@@ -63,9 +63,9 @@ Contour3D walls(const Polygon& lower, const Polygon& upper,
     rpts.reserve(upoints.size() + lpoints.size());
     ind.reserve(2 * upoints.size() + 2 * lpoints.size());
     for (auto &p : upoints)
-        rpts.emplace_back(unscaled(p.x()), unscaled(p.y()), upper_z_mm);
+        rpts.emplace_back(unscale(p.x()), unscale(p.y()), upper_z_mm);
     for (auto &p : lpoints)
-        rpts.emplace_back(unscaled(p.x()), unscaled(p.y()), lower_z_mm);
+        rpts.emplace_back(unscale(p.x()), unscale(p.y()), lower_z_mm);
 
     // Create pointing indices into vertex arrays. u-upper, l-lower
     size_t uidx = 0, lidx = offs, unextidx = 1, lnextidx = offs + 1;
@@ -203,7 +203,7 @@ void offset(ExPolygon& sh, coord_t distance) {
     }
 
     ClipperOffset offs;
-    offs.ArcTolerance = 0.01*scaled(1.0);
+    offs.ArcTolerance = 0.01*scale_(1.0);
     Paths result;
     offs.AddPath(ctour, jtRound, etClosedPolygon);
     offs.AddPaths(holes, jtRound, etClosedPolygon);
@@ -351,7 +351,7 @@ Contour3D round_edges(const ExPolygon& base_plate,
         double x2 = xx*xx;
         double stepy = std::sqrt(r2 - x2);
 
-        offset(ob, s*scaled(xx));
+        offset(ob, s*scale_(xx));
         wh = ceilheight_mm - radius_mm + stepy;
 
         Contour3D pwalls;
@@ -375,7 +375,7 @@ Contour3D round_edges(const ExPolygon& base_plate,
             double xx = radius_mm - i*stepx;
             double x2 = xx*xx;
             double stepy = std::sqrt(r2 - x2);
-            offset(ob, s*scaled(xx));
+            offset(ob, s*scale_(xx));
             wh = ceilheight_mm - radius_mm - stepy;
 
             Contour3D pwalls;
@@ -476,7 +476,7 @@ ExPolygons concave_hull(const ExPolygons& polys, double max_dist_mm = 50,
         double dx = x(c) - x(cc), dy = y(c) - y(cc);
         double l = std::sqrt(dx * dx + dy * dy);
         double nx = dx / l, ny = dy / l;
-        double max_dist = scaled(max_dist_mm);
+        auto   max_dist = scale_<double>(max_dist_mm);
 
         ExPolygon& expo = punion[idx++];
         BoundingBox querybb(expo);
@@ -492,10 +492,10 @@ ExPolygons concave_hull(const ExPolygons& polys, double max_dist_mm = 50,
         ctour.reserve(3);
         ctour.emplace_back(cc);
 
-        Point d(coord_t(scaled(1.)*nx), coord_t(scaled(1.)*ny));
+        Point d(coord_t(scale_(1.)*nx), coord_t(scale_(1.)*ny));
         ctour.emplace_back(c + Point( -y(d),  x(d) ));
         ctour.emplace_back(c + Point(  y(d), -x(d) ));
-        offset(r, scaled(1.));
+        offset(r, scale_(1.));
 
         return r;
     });
@@ -529,14 +529,14 @@ void base_plate(const TriangleMesh &mesh, ExPolygons &output, float h,
     ExPolygons tmp; tmp.reserve(count);
     for(ExPolygons& o : out)
         for(ExPolygon& e : o) {
-            auto&& exss = e.simplify(scaled(0.1));
+            auto&& exss = e.simplify(scale_(0.1));
             for(ExPolygon& ep : exss) tmp.emplace_back(std::move(ep));
         }
 
     ExPolygons utmp = unify(tmp);
 
     for(auto& o : utmp) {
-        auto&& smp = o.simplify(scaled(0.1));
+        auto&& smp = o.simplify(scale_(0.1));
         output.insert(output.end(), smp.begin(), smp.end());
     }
 }
@@ -565,12 +565,12 @@ Contour3D create_base_pool(const ExPolygons &ground_layer,
     const double wingdist       = wingheight / std::tan(slope);
     const double bottom_offs    = (thickness + wingheight) / std::tan(slope);
 
-    // scaled values
-    const coord_t s_thickness   = scaled(thickness);
-    const coord_t s_eradius     = scaled(cfg.edge_radius_mm);
+    // scale_ values
+    const coord_t s_thickness   = scale_(thickness);
+    const coord_t s_eradius     = scale_(cfg.edge_radius_mm);
     const coord_t s_safety_dist = 2*s_eradius + coord_t(0.8*s_thickness);
-    const coord_t s_wingdist    = scaled(wingdist);
-    const coord_t s_bottom_offs = scaled(bottom_offs);
+    const coord_t s_wingdist    = scale_(wingdist);
+    const coord_t s_bottom_offs = scale_(bottom_offs);
 
     auto& thrcl = cfg.throw_on_cancel;
 

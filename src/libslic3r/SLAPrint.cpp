@@ -668,7 +668,7 @@ void SLAPrint::process()
     double ilhd = m_material_config.initial_layer_height.getFloat();
     auto   ilh  = float(ilhd);
 
-    auto ilhs = scaled(ilhd);
+    auto ilhs = scale_(ilhd);
     const size_t objcount = m_objects.size();
 
     static const unsigned min_objstatus = 0;   // where the per object operations start
@@ -694,17 +694,17 @@ void SLAPrint::process()
 
         // We need to prepare the slice index...
 
-        double lhd  = m_objects.front()->m_config.layer_height.getFloat();
-        float  lh   = float(lhd);
-        auto   lhs  = scaled(lhd);
+        double  lhd  = m_objects.front()->m_config.layer_height.getFloat();
+        float   lh   = float(lhd);
+        coord_t lhs  = scale_(lhd);
 
         auto &&bb3d  = mesh.bounding_box();
         double minZ  = bb3d.min(Z) - po.get_elevation();
         double maxZ  = bb3d.max(Z);
         auto   minZf = float(minZ);
 
-        auto minZs = scaled(minZ);
-        auto maxZs = scaled(maxZ);
+        coord_t minZs = scale_(minZ);
+        coord_t maxZs = scale_(maxZ);
 
         po.m_slice_index.clear();
         
@@ -714,7 +714,7 @@ void SLAPrint::process()
         po.m_slice_index.emplace_back(minZs + ilhs, minZf + ilh / 2.f, ilh);
 
         for(coord_t h = minZs + ilhs + lhs; h <= maxZs; h += lhs)
-            po.m_slice_index.emplace_back(h, unscaled<float>(h) - lh / 2.f, lh);
+            po.m_slice_index.emplace_back(h, unscalef(h) - lh / 2.f, lh);
        
         // Just get the first record that is form the model:
         auto slindex_it =
@@ -740,7 +740,7 @@ void SLAPrint::process()
 
         auto mit = slindex_it;
         double doffs = m_printer_config.absolute_correction.getFloat();
-        coord_t clpr_offs = scaled(doffs);
+        coord_t clpr_offs = scale_(doffs);
         for(size_t id = 0;
             id < po.m_model_slices.size() && mit != po.m_slice_index.end();
             id++)
@@ -952,7 +952,7 @@ void SLAPrint::process()
         }
 
         double doffs = m_printer_config.absolute_correction.getFloat();
-        coord_t clpr_offs = scaled(doffs);
+        coord_t clpr_offs = scale_(doffs);
         for(size_t i = 0;
             i < sd->support_slices.size() && i < po.m_slice_index.size();
             ++i)
@@ -1066,8 +1066,8 @@ void SLAPrint::process()
 
         const int    fade_layers_cnt    = m_default_object_config.faded_layers.getInt();// 10 // [3;20]
 
-        const double width              = scaled(m_printer_config.display_width.getFloat());
-        const double height             = scaled(m_printer_config.display_height.getFloat());
+        const auto width                = scale_<double>(m_printer_config.display_width.getFloat());
+        const auto height               = scale_<double>(m_printer_config.display_height.getFloat());
         const double display_area       = width*height;
 
         // get polygons for all instances in the object

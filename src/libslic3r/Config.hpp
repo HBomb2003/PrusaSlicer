@@ -326,6 +326,12 @@ public:
     }
 };
 
+template<class Rt = coord_t>
+inline SLIC3R_CONSTEXPR Rt scale_(const ConfigOptionFloat &cf) SLIC3R_NOEXCEPT
+{
+    return Rt(scale_(cf.value));
+}
+
 class ConfigOptionFloats : public ConfigOptionVector<double>
 {
 public:
